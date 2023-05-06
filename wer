@@ -1,0 +1,512 @@
+index.html <!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Redis Demo</title>
+  <link rel="stylesheet" href="index.css">
+
+  <style>
+
+  </style>
+</head>
+
+<body>
+  <!-- <button id="login-btn">登录</button> -->
+  <!-- <script>
+    const loginBtn = document.getElementById('login-btn')
+    loginBtn.addEventListener('click', () => {
+      window.location = 'login.html'
+    })
+  </script> -->
+  <table>
+    <thead>
+      <tr>
+        <th>参数</th>
+        <th>值</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>工艺设备</td>
+        <td><input type="text" id="a" style="background: inherit; border: none;" /></td>
+      </tr>
+      <tr>
+        <td>填充速度</td>
+        <td><input type="text" id="b" style="background: inherit; border: none;" /></td>
+      </tr>
+      <tr>
+        <td>打印温度</td>
+        <td><input type="text" id="c" style="background: inherit; border: none;" /></td>
+      </tr>
+      <tr>
+        <td>填充密度</td>
+        <td><input type="text" id="d" style="background: inherit; border: none;" /></td>
+      </tr>
+    </tbody>
+  </table>
+  <button id="save-btn">保存</button>
+  <script type="module" src="js/index.js"></script>
+</body>
+
+</html> login.html<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>Login</title>
+  <link rel="stylesheet" href="css/login.css">
+</head>
+
+<body>
+  <div class="login-form">
+    <h1>登录</h1>
+    <input type="text" id="username" placeholder="用户名" value="a"><br>
+    <input type="password" id="password" placeholder="密码" value="a"><br>
+    <button id="login-btn">登录</button>
+    <button id="register-btn" class="register-btn">注册</button> <!-- 添加注册按钮 -->
+  </div>
+  <script type="module" src="js/login.js"></script>
+</body>
+
+</html> register.html <!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>注册</title>
+  <link rel="stylesheet" href="css/login.css">
+</head>
+
+<body>
+  <div class="login-form">
+    <h1>注册</h1>
+    <input type="text" id="username" placeholder="用户名"><br>
+    <input type="password" id="password" placeholder="密码"><br>
+    <button id="register-sub">提交</button><a href="login.html">已有账户?</a>
+    <!-- <button id="register-btn" class="register-btn">注册</button>  -->
+  </div>
+  <script type="module" src="js/login.js"></script>
+</body>
+
+</html> index.js const redis = require('redis')
+const {
+  ipcRenderer
+} = require('electron');
+
+function showMessageBox(options) {
+  const {
+    title,
+    message,
+    buttons
+  } = options
+  const container = document.createElement('div')
+  container.className = 'success-box'
+  container.classList.add('message-box-container')
+
+
+  // 1秒后显示并添加.show类
+  setTimeout(() => {
+    container.classList.add('show')
+  }, 150)
+
+  container.style.position = 'fixed'
+  container.style.borderRadius = '10px'
+  container.style.top = 0
+  container.style.bottom = 0
+  container.style.left = '37%'
+  container.style.top = '3%'
+  container.style.display = 'flex'
+  container.style.alignItems = 'center'
+  container.style.justifyContent = 'center'
+  container.style.width = '300px'
+  container.style.height = '40px'
+
+  const titleElement = document.createElement('div')
+  titleElement.classList.add('message-box-title')
+  titleElement.innerText = title
+
+  const messageElement = document.createElement('div')
+  messageElement.classList.add('message-box-message')
+  messageElement.innerText = message
+
+  const buttonsElement = document.createElement('div')
+  buttonsElement.classList.add('message-box-buttons')
+
+  for (const button of buttons) {
+    const buttonElement = document.createElement('button')
+    buttonElement.innerText = button
+  }
+
+  buttonsElement.addEventListener('click', () => {
+    document.body.removeChild(container)
+  })
+
+  container.addEventListener('click', e => e.stopPropagation())
+
+  container.appendChild(titleElement)
+  container.appendChild(messageElement)
+  container.appendChild(buttonsElement)
+
+  document.body.appendChild(container)
+  setTimeout(() => {
+    document.body.removeChild(container)
+  }, 3000)
+}
+
+async function readData(k) {
+  const value = await ipcRenderer.invoke('get-store-value', k);
+  return value
+}
+
+async function setData(k, v) {
+  await ipcRenderer.invoke('set-store-value', k, v);
+}
+
+// 连接Redis
+const client = redis.createClient()
+client.connect()
+client.hset = (key, field, value) => {
+  client.set(`${key}:${field}`, value)
+}
+
+client.hget = (key, field) => {
+  return client.get(`${key}:${field}`)
+}
+export function setKey(key, value) {
+  client.set(key, value)
+}
+
+export function getKey(key) {
+  const value = client.get(key)
+  return value
+}
+
+export function delKey(key) {
+  client.del(key, (err) => {
+    if (err) throw err
+  })
+}
+
+export function existsKey(key) {
+  return client.exists(key)
+}
+
+function keysList(pattern) {
+  client.keys(pattern, (err, keys) => {
+    if (err) throw err
+    return keys
+  })
+}
+
+function hset(key, field, value) {
+  client.hset(key, field, value)
+}
+
+async function hget(key, field) {
+  return client.hget(key, field)
+}
+
+function hdelKey(hash, key) {
+  client.hdel(hash, key, (err) => {
+    if (err) throw err
+  })
+}
+
+function hkeysList(hash) {
+  client.hkeys(hash, (err, keys) => {
+    if (err) throw err
+    return keys
+  })
+}
+
+function hvalsList(hash) {
+  client.hvals(hash, (err, vals) => {
+    if (err) throw err
+    return vals
+  })
+}
+
+
+
+
+var username = ''
+var paramk = ''
+var param = {
+  'a': 'a',
+  'b': 'b',
+  'c': 'c',
+  'd': 'd',
+
+}
+async function init() {
+  username = await readData('user')
+  paramk = 'paramk:' + username
+  console.log(existsKey(paramk))
+  param.a = await hget(paramk, 'a')
+  param.b = await hget(paramk, 'b')
+  param.c = await hget(paramk, 'c')
+  param.d = await hget(paramk, 'd')
+  console.log(param)
+  document.getElementById('a').value = param.a
+  document.getElementById('b').value = param.b
+  document.getElementById('c').value = param.c
+  document.getElementById('d').value = param.d
+}
+document.getElementById('save-btn').addEventListener('click', () => {
+  console.log('sss')
+  hset(paramk, 'a', document.getElementById('a').value)
+  hset(paramk, 'b', document.getElementById('b').value)
+  hset(paramk, 'c', document.getElementById('c').value)
+  hset(paramk, 'd', document.getElementById('d').value)
+  showMessageBox({
+    title: '',
+    message: '保存成功',
+    buttons: ['确定', '取消']
+  })
+})
+
+init() login.js const redis = require('redis')
+const {
+  ipcRenderer
+} = require('electron');
+
+async function readData(k) {
+  const value = await ipcRenderer.invoke('get-store-value', k);
+}
+
+async function setData(k, v) {
+  await ipcRenderer.invoke('set-store-value', k, v);
+} // 连接Redis
+const client = redis.createClient()
+client.connect()
+
+
+const {
+  dialog
+} = require('electron')
+
+
+
+function showMessageBox(options) {
+  const {
+    title,
+    message,
+    buttons,
+    clazz
+  } = options
+  const container = document.createElement('div')
+  container.className = clazz
+  container.classList.add('message-box-container')
+
+
+  // 1秒后显示并添加.show类
+  setTimeout(() => {
+    container.classList.add('show')
+  }, 150)
+
+  container.style.position = 'fixed'
+  container.style.borderRadius = '10px'
+  container.style.top = 0
+  container.style.bottom = 0
+  container.style.left = '37%'
+  container.style.top = '3%'
+  container.style.display = 'flex'
+  container.style.alignItems = 'center'
+  container.style.justifyContent = 'center'
+  container.style.width = '300px'
+  container.style.height = '40px'
+
+  const titleElement = document.createElement('div')
+  titleElement.classList.add('message-box-title')
+  titleElement.innerText = title
+
+  const messageElement = document.createElement('div')
+  messageElement.classList.add('message-box-message')
+  messageElement.innerText = message
+
+  const buttonsElement = document.createElement('div')
+  buttonsElement.classList.add('message-box-buttons')
+
+  for (const button of buttons) {
+    const buttonElement = document.createElement('button')
+    buttonElement.innerText = button
+  }
+
+  buttonsElement.addEventListener('click', () => {
+    document.body.removeChild(container)
+  })
+
+  container.addEventListener('click', e => e.stopPropagation())
+
+  container.appendChild(titleElement)
+  container.appendChild(messageElement)
+  container.appendChild(buttonsElement)
+
+  document.body.appendChild(container)
+  setTimeout(() => {
+    document.body.removeChild(container)
+  }, 3000)
+}
+
+export function setKey(key, value) {
+  client.set(key, value)
+}
+
+export function getKey(key) {
+  const value = client.get(key)
+  return value
+}
+
+export function delKey(key) {
+  client.del(key)
+}
+
+
+// 添加数据
+const addBtn = document.getElementById('login-btn')
+
+
+
+const loginBtn = document.getElementById('login-btn')
+if (loginBtn) {
+  loginBtn.addEventListener('click', () => {
+    const usernameInput = document.getElementById('username')
+    const passwordInput = document.getElementById('password')
+    const username = usernameInput.value
+    const password = passwordInput.value
+    getKey(username).then(v => {
+      console.log(v); // OK
+      if (v == password) {
+        setData('user', username)
+        window.location = 'index.html'
+      } else {
+        showMessageBox({
+          title: '',
+          message: '账号或密码错误',
+          buttons: ['确定', '取消'],
+          clazz: 'error-box'
+        })
+
+      }
+    });
+  })
+}
+
+// 注册
+
+const registerSub = document.getElementById('register-sub')
+if (registerSub) {
+  registerSub.addEventListener('click', () => {
+    const usernameInput = document.getElementById('username')
+    const passwordInput = document.getElementById('password')
+    const username = usernameInput.value
+    const password = passwordInput.value
+    if (username == null)
+      setTimeout(() => {
+        alert("账号不能为空")
+      }, 0)
+    const v = getKey(username).then(v => {
+      if (v) {
+        showMessageBox({
+          title: '',
+          message: '账号已存在',
+          buttons: ['确定', '取消'],
+          clazz: 'error-box'
+        })
+      } else {
+        // window.location=''
+        showMessageBox({
+          title: '',
+          message: '注册成功，请登录',
+          buttons: ['确定', '取消'],
+          clazz: 'success-box'
+        })
+        setKey(username, password)
+
+      }
+    })
+
+  })
+
+}
+
+const registerBtn = document.getElementById('register-btn')
+if (registerBtn) {
+  registerBtn.addEventListener('click', () => {
+    window.location = 'register.html'
+  })
+} main.js const {
+  app,
+  BrowserWindow,
+  Menu,
+  globalShortcut,
+  ipcMain
+} = require('electron')
+const reloader = require('electron-reloader')
+reloader(module)
+const Store = require('electron-store');
+const store = new Store();
+
+app.on('ready', () => {
+  const main = new BrowserWindow({
+    width: 400,
+    height: 400,
+    webPreferences: {
+      nodeIntegration: true,
+      enableremotemodule: true,
+      contextIsolation: false,
+    }
+  })
+
+  ipcMain.on('set-title', (event, title) => {
+    const webContents = event.sender
+    const win = BrowserWindow.fromWebContents(webContents)
+    win.setTitle(title)
+  })
+  ipcMain.handle('get-store-value', (event, key) => {
+    return store.get(key);
+  });
+
+  ipcMain.handle('set-store-value', (event, key, value) => {
+    store.set(key, value);
+  });
+
+  const template = [{
+      label: '选项',
+      submenu: [{
+        label: '登录',
+        click() {
+          var bw2 = new BrowserWindow({
+            width: 400,
+            height: 400,
+            webPreferences: {
+              nodeIntegration: true,
+              enableremotemodule: true,
+              contextIsolation: false,
+            }
+          })
+          bw2.loadFile("./src/login.html")
+          globalShortcut.register("F6", () => {
+            bw2.reload();
+          });
+          // bw2.webContents.openDevTools();
+
+        }
+
+      }]
+    },
+    {
+      label: '关于我们'
+    }
+  ]
+  main.loadFile("./src/login.html");
+  // reloadF5(main)
+  globalShortcut.register("F5", () => {
+    main.reload();
+  });
+
+  const menu = Menu.buildFromTemplate(template)
+  Menu.setApplicationMenu(menu)
+  // main.webContents.openDevTools();
+}) 
